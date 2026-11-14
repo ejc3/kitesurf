@@ -1,0 +1,46 @@
+name: Stage deploy (ejc3 fork)
+
+# Deploys this fork's main to the kitesurf-stage Worker in the ejc3 Cloudflare account,
+# behind Cloudflare Access (ejc3/aws workers-stage.tf), for fcvm's render benchmark
+# (ejc3/fcvm bench/chromium) to measure hosted Kitesurf. main is cloudflare/kitesurf at the
+# commit fcvm pins (bench/chromium/kitesurf_pins.sh) plus this workflow and the URL switches
+# in packages/engine/wrangler.jsonc. The token is the cloudflare-deploy environment's
+# CLOUDFLARE_API_TOKEN (ejc3/aws workers-deploy.tf), and that environment admits main only.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy kitesurf-stage
+    if: github.repository == 'ejc3/kitesurf' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: cloudflare-deploy
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 9.15.4
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      # Builds with Bazel on this runner (bazelflare, upstream's remote executor, is
+      # Cloudflare's) and uploads with wrangler deploy. The script builds --config=devtools.
+      - name: Build and deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: pnpm run deploy --name kitesurf-stage
