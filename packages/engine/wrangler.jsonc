@@ -1,6 +1,10 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "kitesurf",
+  // ejc3 fork: the kitesurf-stage Worker is created with no public URL. Cloudflare Access
+  // covers it first (ejc3/aws workers-stage.tf), then the URLs are turned on there.
+  "workers_dev": false,
+  "preview_urls": false,
   "main": "src/index.ts",
   "compatibility_date": "2026-09-11",
 
